@@ -1,3 +1,9 @@
+## 17-3.2.22 2025-02-14 <dave at tiredofit dot ca>
+
+   ### Added
+      - Postgresql 17.3
+
+
 ## 17-3.2.21 2025-02-04 <dave at tiredofit dot ca>
 
    ### Added

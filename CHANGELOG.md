@@ -1,3 +1,9 @@
+## 16-3.2.21 2025-02-21 <dave at tiredofit dot ca>
+
+   ### Added
+      - PostgreSQL 16.8
+
+
 ## 16-3.2.20 2025-02-14 <joergmschulz@github>
 
    ### Added

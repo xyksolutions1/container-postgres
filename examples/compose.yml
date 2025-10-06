@@ -1,14 +1,13 @@
 services:
 
   postgres-db:
-    image: tiredofit/postgres:16
+    image: docker.io/nfrastack/postgres:17
     container_name: postgres-db
     volumes:
       - ./logs:/logs
       - ./db:/var/lib/postgresql/data
     environment:
       - TIMEZONE=America/Vancouver
-      - CONTAINER_NAME=postgres-db
 
       - SUPERUSER_PASS=superuser
 

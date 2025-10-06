@@ -1,0 +1,20 @@
+#!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
+
+source /container/base/functions/container/init
+prepare_service 10-postgres
+SERVICE_NAME="postgres"
+output_off
+
+bootstrap_filesystem
+initialize_cluster
+configure_server
+control_server start
+create_databases
+configure_replication
+configure_monitoring
+control_server stop
+print_info "PostgreSQL init process complete - ready for start up."
+liftoff

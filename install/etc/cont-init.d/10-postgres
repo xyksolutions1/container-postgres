@@ -5,6 +5,31 @@ prepare_service single
 PROCESS_NAME="postgres"
 output_off
 
+
+cat <<EOF
+
+*****************************************************************************************
+*                                                                                       *
+*                    END OF LIFE NOTICE OCTOBER 06, 2025                                *
+*                               tiredofit/postgres                                      *
+*                                                                                       *
+* This image is no longer maintained as of and will not receive updates.                *
+*                                                                                       *
+* A successor image is available at:                                                    *
+*                                                                                       *
+* Repository | Documentation:                                                           *
+*   - https://github.com/nfrastack/container-postgres                                   *
+*                                                                                       *
+* Image Registries:                                                                     *
+*   - https://hub.docker.com/r/nfrastack/postgres                                       *
+*   - https://github.com/nfrastack/container-postgres/pkgs/container/container-postgres *
+*                                                                                       *
+* Please visit https://nfrastack.com for more information.                              *
+*                                                                                       *
+*****************************************************************************************
+
+EOF
+
 bootstrap_filesystem
 initialize_cluster
 configure_server

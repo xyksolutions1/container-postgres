@@ -1,3 +1,13 @@
+## 18-3.3.0pre 2025-10-06 <code at nfrastack dot com>
+
+   ### Added
+      - Postgres 18.0
+      - Switch base image to nfrastack/base
+      - Alpine 3.22
+      - Clang 20
+      - LLVM 20
+      - Zabbix Postgres plugin 7.4.3
+
 ## 17-3.2.99 2025-10-06 <dave at tiredofit dot ca>
 
 Add EOL Notice and deprecate image
@@ -56,13 +66,11 @@ Add EOL Notice and deprecate image
       - Postgresql 17.0.0
       - Pin to tiredofit/alpine:7.10.4
 
-
 ## 16-3.2.17 2024-09-25 <dave at tiredofit dot ca>
 
    ### Added
       - Postgresql 16.4
       - Zabbix Postgresql Module 7.0.4
-
 
 ## 16-3.2.16 2024-07-29 <dave at tiredofit dot ca>
 

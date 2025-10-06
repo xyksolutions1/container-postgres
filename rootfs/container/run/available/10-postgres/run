@@ -1,0 +1,19 @@
+#!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
+
+source /container/base/functions/container/init
+SERVICE_NAME="postgres"
+prepare_service 10-postgres
+check_container_initialized
+
+case "${LOG_TYPE,,}" in
+    file ) hide_output=silent ;;
+esac
+
+liftoff
+
+print_start "Starting PostgreSQL $(psql --version | head -n 1 | awk '{print $NF}')"
+TZ="${TIMEZONE}" ${hide_output} exec s6-setuidgid postgres postgres \
+                                    --config_file="${CONFIG_PATH%/}"/"${CONFIG_FILE}" ${SERVER_ARGS}

@@ -1,66 +1,34 @@
-#!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
 
 bootstrap_filesystem() {
-    if [ ! -d "${CERT_PATH}" ] ; then
-        mkdir -p "${CERT_PATH}"
-    fi
-    if [ $(stat -c %U "${CERT_PATH}") != "postgres" ] ; then silent chown -R postgres:postgres "${CERT_PATH}" ; fi
+    create_folder \
+                    "${CERT_PATH},\
+                    ${CONFIG_PATH},\
+                    ${CONFIG_CUSTOM_PATH}, \
+                    ${LOG_PATH}"
+                    postgres:postgres 755
 
-    if [ ! -d "${CONFIG_PATH}" ] ; then
-        mkdir -p "${CONFIG_PATH}"
-    fi
-    if [ $(stat -c %U "${CONFIG_PATH}") != "postgres" ] ; then silent chown -R postgres:postgres "${CONFIG_PATH}" ; fi
-
-    if [ ! -d "${CONFIG_CUSTOM_PATH}" ] ; then
-        mkdir -p "${CONFIG_CUSTOM_PATH}"
-    fi
-    if [ $(stat -c %U "${CONFIG_CUSTOM_PATH}") != "postgres" ] ; then silent chown -R postgres:postgres "${CONFIG_CUSTOM_PATH}" ; fi
-
-    if [ ! -d "${DATA_PATH}" ] ; then
-        mkdir -p "${DATA_PATH}"
-    fi
-    if [ $(stat -c %U "${DATA_PATH}") != "postgres" ] ; then chown -R postgres:postgres "${DATA_PATH}" ; fi
-    if [ $(stat -c %a "${DATA_PATH}") != "700" ] ; then chmod -R 700 "${DATA_PATH}" ; fi
-
-    if [ ! -d "/var/run/postgresql" ] ; then
-        mkdir -p "/var/run/postgresql"
-    fi
-
-    if [ $(stat -c %U "/var/run/postgresql") != "postgres" ] ; then
-        chown postgres:postgres "/var/run/postgresql"
-        chmod g+s /var/run/postgresql
-    fi
-
-    if [ -n "${WAL_PATH}" ] ; then
-        if [ ! -d "${WAL_PATH}" ] ; then
-            mkdir -p "${WAL_PATH}"
-        fi
-        if [ $(stat -c %U "${WAL_PATH}") != "postgres" ] ; then chown -R postgres:postgres "${WAL_PATH}" ; fi
-        if [ $(stat -c %a "${WAL_PATH}") != "700" ] ; then chmod -R 700 "${WAL_PATH}" ; fi
-    fi
-
-    case "${LOG_TYPE,,}" in
-        file | both)
-            if [ ! -d "${LOG_PATH}" ] ; then
-                mkdir -p "${LOG_PATH}"
-            fi
-            if [ $(stat -c %U "${LOG_PATH}") != "postgres" ] ; then chown postgres:postgres "${LOG_PATH}" ; fi
-        ;;
-    esac
+    create_folder \
+                    "${DATA_PATH},\
+                    ${WAL_PATH},\
+                    /var/run/postgres"
+                    postgres:postgres 700
 }
 
 control_server() {
     case "${1}" in
         start )
-            transform_file_var \
+            transform_var file \
                             SUPERUSER_USER \
                             SUPERUSER_PASS
             sanity_var "SUPERUSER_PASS" "Superuser Password"
             export PGUSER=$SUPERUSER_USER
             export PGPASSWORD=${SUPERUSER_PASS}
             TZ=${TIMEZONE} silent s6-setuidgid postgres pg_ctl \
-                                                                -D "${DATA_PATH}" \
-                                                                -o "-c config_file=${CONFIG_PATH}/${CONFIG_FILE}" \
+                                                                -D "${DATA_PATH%/}" \
+                                                                -o "-c config_file=${CONFIG_PATH%/}/${CONFIG_FILE}" \
                                                                 -o "-c listen_addresses='localhost'" \
                                                                 -w start
 
@@ -69,8 +37,8 @@ control_server() {
         ;;
         stop )
             TZ=${TIMEZONE} silent s6-setuidgid postgres pg_ctl \
-                                                                -D "${DATA_PATH}" \
-                                                                -o "-c config_file=${CONFIG_PATH}/${CONFIG_FILE}" \
+                                                                -D "${DATA_PATH%/}" \
+                                                                -o "-c config_file=${CONFIG_PATH%/}/${CONFIG_FILE}" \
                                                                 -o "-c listen_addresses='localhost'" \
                                                                 -m fast \
                                                                 -w stop
@@ -80,14 +48,14 @@ control_server() {
 
 configure_monitoring() {
     if var_true "${CONTAINER_ENABLE_MONITORING}" && [ "${CONTAINER_MONITORING_BACKEND,,}" = "zabbix" ]; then
-        source /assets/defaults/03-monitoring
-        transform_file_var \
+        source /container/base/defaults/*-monitoring
+        transform_var file \
                         MONITOR_USER \
                         MONITOR_PASS
 
-        cat <<EOF > "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/tiredofit_postgres.conf
+        cat <<EOF > "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_postgres.conf
 # Zabbix Postgresql Configuration - Automatically Generated
-# Find Companion Zabbix Server Templates at https://github.com/tiredofit/docker-postgres
+# Find Companion Zabbix Server Templates at https://github.com/nfrastack/docker-postgres
 # Autoregister=postgres
 EOF
 
@@ -115,13 +83,13 @@ EOSQL
     DROP USER IF EXISTS ${MONITOR_USER};
 EOSQL
         fi
-        sed -i "/${MONITOR_USER}/d" "${CONFIG_PATH}"/"${HBA_FILE}"
+        sed -i "/${MONITOR_USER}/d" "${CONFIG_PATH%/}"/"${HBA_FILE}"
     fi
 }
 
 configure_replication() {
     if var_true "${ENABLE_REPLICATION}" ; then
-        transform_file_var \
+        transform_var file \
                         REAPLICATION_HOST \
                         REPLICATION_PASS \
                         REPLICATION_PORT \
@@ -155,7 +123,7 @@ EOSQL
                                 --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
     DROP USER IF EXISTS "${REPLICATION_USER}";
 EOSQL
-                    sed -i "/host replication/d" "${CONFIG_PATH}"/"${HBA_FILE}"
+                    sed -i "/host replication/d" "${CONFIG_PATH%/}"/"${HBA_FILE}"
                 fi
             ;;
         esac
@@ -164,7 +132,7 @@ EOSQL
 
 create_databases() {
     if var_true "${CREATE_DB}" ; then
-        transform_file_var \
+        transform_var file \
                         DB_NAME \
                         DB_PASS \
                         DB_USER
@@ -177,7 +145,7 @@ create_databases() {
         dbnum=$(printenv | sort | grep -c '^DB.*_NAME')
         for (( i = 01; i <= dbnum; i++ )) ; do
             i=$(printf "%02d" $i)
-            transform_file_var \
+            transform_var file \
                             DB${i}_NAME \
                             DB${i}_USER \
                             DB${i}_PASS
@@ -233,20 +201,20 @@ EOSQL
 
 configure_server() {
     if [ "${SETUP_MODE,,}" = "auto" ] ; then
-        if [ ! -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ]; then
+        if [ ! -f "${CONFIG_PATH%/}"/"${CONFIG_FILE}" ]; then
             case "${CONFIG_MODE,,}" in
                 "default" )
-                    s6-setuidgid postgres cp /assets/postgres/postgres-default.conf "${CONFIG_PATH}"/"${CONFIG_FILE}"
+                    s6-setuidgid postgres cp /container/data/postgres/postgres-default.conf "${CONFIG_PATH%/}"/"${CONFIG_FILE}"
                 ;;
             esac
         fi
 
-        if [ ! -f "${CONFIG_PATH}"/"${HBA_FILE}" ]; then
-            s6-setuidgid postgres cp /assets/postgres/pg_hba.conf "${CONFIG_PATH}"/"${HBA_FILE}"
+        if [ ! -f "${CONFIG_PATH%/}"/"${HBA_FILE}" ]; then
+            s6-setuidgid postgres cp /container/data/postgres/pg_hba.conf "${CONFIG_PATH%/}"/"${HBA_FILE}"
         fi
 
-        if [ ! -f "${CONFIG_PATH}"/"${IDENT_FILE}" ]; then
-            s6-setuidgid postgres cp /assets/postgres/pg_ident.conf "${CONFIG_PATH}"/"${IDENT_FILE}"
+        if [ ! -f "${CONFIG_PATH%/}"/"${IDENT_FILE}" ]; then
+            s6-setuidgid postgres cp /container/data/postgres/pg_ident.conf "${CONFIG_PATH%/}"/"${IDENT_FILE}"
         fi
 
         print_debug "[configure_server] Log type: ${LOG_TYPE,,}"
@@ -276,24 +244,24 @@ configure_server() {
         esac
 
         s6-setuidgid postgres sed -i \
-                                    -e "s|data_directory = '.*'|data_directory = '${DATA_PATH}'|g" \
-                                    -e "s|include_dir = '.*'|include_dir = '${CONFIG_CUSTOM_PATH}'|g" \
-                                    -e "s|hba_file = '.*'|hba_file = '${CONFIG_PATH}/${HBA_FILE}'|g" \
-                                    -e "s|ident_file = '.*'|ident_file = '${CONFIG_PATH}/${IDENT_FILE}'|g" \
+                                    -e "s|data_directory = '.*'|data_directory = '${DATA_PATH%/}'|g" \
+                                    -e "s|include_dir = '.*'|include_dir = '${CONFIG_CUSTOM_PATH%/}'|g" \
+                                    -e "s|hba_file = '.*'|hba_file = '${CONFIG_PATH%/}/${HBA_FILE}'|g" \
+                                    -e "s|ident_file = '.*'|ident_file = '${CONFIG_PATH%/}/${IDENT_FILE}'|g" \
                                     -e "s|listen_addresses = '.*'|listen_addresses = '${LISTEN_IP}'|g" \
                                     -e "s|port = '.*'|port = '${LISTEN_PORT}'|g" \
                                     -e "s|max_connections = .*|max_connections = ${MAX_CONNECTIONS}|g" \
                                     -e "s|log_destination = '.*'|log_destination = '${log_format}'|g" \
                                     -e "s|logging_collector = .*|logging_collector = ${logging_collector}|g" \
-                                    -e "s|log_directory = '.*'|log_directory = '${LOG_PATH}'|g" \
+                                    -e "s|log_directory = '.*'|log_directory = '${LOG_PATH%/}'|g" \
                                     -e "s|log_filename = '.*'|log_filename = '${LOG_FILE}'|g" \
                                     -e "s|log_min_messages = .*|log_min_messages = ${LOG_LEVEL,,}|g" \
                                     -e "s|log_min_error_statement = .*|log_min_error_statement = ${LOG_LEVEL_ERROR_STATEMENT,,}|g" \
                                     -e "s|timezone = '.*'|timezone = '${TIMEZONE}'|g" \
-                                    "${CONFIG_PATH}"/"${CONFIG_FILE}"
+                                    "${CONFIG_PATH%/}"/"${CONFIG_FILE}"
 
         if var_true "${ENABLE_REPLICATION}" && ! [[ "${REPLICATION_MODE,,}" =~ ^(main|master|primary)$ ]] ; then
-            cat <<EOREPLICATIONHOTSTANDBY | silent sudo -u postgres tee "${CONFIG_CUSTOM_PATH}"/replication-hot_standby.conf
+            cat <<EOREPLICATIONHOTSTANDBY | silent sudo -u postgres tee "${CONFIG_CUSTOM_PATH%/}"/replication-hot_standby.conf
 checkpoint_segments = 8
 hot_standby =on
 max_wal_senders = 16
@@ -303,7 +271,7 @@ EOREPLICATIONHOTSTANDBY
 
             case "${REPLICATION_MODE,,}" in
                 secondary | slave )
-                    transform_file_var \
+                    transform_var file \
                             REAPLICATION_HOST \
                             REPLICATION_PASS \
                             REPLICATION_PORT \
@@ -319,7 +287,7 @@ EOREPLICATIONRECOVERY
                 ;;
             esac
         else
-            silent rm -rf "${CONFIG_CUSTOM_PATH}"/replication*.conf
+            silent rm -rf "${CONFIG_CUSTOM_PATH%/}"/replication*.conf
         fi
     fi
 }
@@ -333,7 +301,7 @@ initialize_cluster() {
             print_warn "Replication Host '${REPLICATION_HOST}' is not accessible, retrying.. ($counter seconds so far)"
         done
         silent pg_basebackup \
-                        -D ${DATA_PATH} \
+                        -D ${DATA_PATH%/} \
                         -h ${REPLICATION_HOST} \
                         -p ${REPLICATION_PORT} \
                         -U ${REPLICATION_USER} \
@@ -341,16 +309,16 @@ initialize_cluster() {
                         -w
     }
 
-    if [ ! -s "${DATA_PATH}"/PG_VERSION ] ; then
-        if [ "$(dirname ${CONFIG_CUSTOM_PATH})/" = "${DATA_PATH}" ] ; then
-            mv "${CONFIG_CUSTOM_PATH}" /tmp/
+    if [ ! -s "${DATA_PATH%/}"/PG_VERSION ] ; then
+        if [ "$(dirname ${CONFIG_CUSTOM_PATH%/})" = "${DATA_PATH%/}" ] ; then
+            mv "${CONFIG_CUSTOM_PATH%/}" /tmp/
         fi
-        if dir_notempty "${DATA_PATH}" ; then
-            print_error "DATA_PATH '${DATA_PATH}' needs to be empty - Exiting."
+        if dir_notempty "${DATA_PATH%/}" ; then
+            print_error "DATA_PATH '${DATA_PATH%/}' needs to be empty - Exiting."
             exit 1
         fi
         if var_true "${ENABLE_REPLICATION}" && ! [[ "${REPLICATION_MODE,,}" =~ ^(main|master|primary)$ ]] ; then
-            transform_file_var \
+            transform_var file \
                             REAPLICATION_HOST \
                             REPLICATION_PASS \
                             REPLICATION_PORT \
@@ -384,8 +352,8 @@ initialize_cluster() {
                             ${INITDB_ARGS} \
                         "
 
-            if [ -n "${WAL_PATH}" ] ; then
-                initdb_args="${initdb_args} --waldir ${WAL_PATH}"
+            if [ -n "${WAL_PATH%/}" ] ; then
+                initdb_args="${initdb_args} --waldir ${WAL_PATH%/}"
             fi
 
             if var_true "${ENABLE_DATA_CHECKSUMS}" ; then
@@ -400,13 +368,13 @@ initialize_cluster() {
             rm -rf "${DATA_PATH}"/*.conf \
                     /tmp/.pgpassword
         fi
-        if [ "$(dirname ${CONFIG_CUSTOM_PATH})/" = "${DATA_PATH}" ] ; then
-            mv /tmp/$(basename "${CONFIG_CUSTOM_PATH}") "${DATA_PATH}"/
+        if [ "$(dirname ${CONFIG_CUSTOM_PATH%/})" = "${DATA_PATH%/}" ] ; then
+            mv /tmp/$(basename "${CONFIG_CUSTOM_PATH%/}") "${DATA_PATH%/}"/
         fi
     else
         print_debug "[initialize_cluster] Skipping - Already initialized"
-        if [ "${POSTGRES_VERSION:0:2}" != $(cat "${DATA_PATH}"/PG_VERSION) ] ; then
-            print_error "Detected Major version error. Schema is built for '$(cat "{DATA_PATH}"/PG_VERSION)' and this image is using '${PG_VERSION:0:2}'"
+        if [ "${POSTGRES_VERSION:0:2}" != $(cat "${DATA_PATH%/}"/PG_VERSION) ] ; then
+            print_error "Detected Major version error. Schema is built for '$(cat "{DATA_PATH%/}"/PG_VERSION)' and this image is using '${PG_VERSION:0:2}'"
             print_error "Upgrade database or perform a restore from a backup"
             exit 1
         fi

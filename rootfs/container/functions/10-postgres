@@ -55,7 +55,7 @@ configure_monitoring() {
 
         cat <<EOF > "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_postgres.conf
 # Zabbix Postgresql Configuration - Automatically Generated
-# Find Companion Zabbix Server Templates at https://github.com/nfrastack/docker-postgres
+# Find Companion Zabbix Server Templates at https://github.com/nfrastack/container-postgres
 # Autoregister=postgres
 EOF
 

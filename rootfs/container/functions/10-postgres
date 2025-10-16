@@ -225,15 +225,15 @@ configure_server() {
                 case "${LOG_FORMAT,,}" in
                     csv )
                         log_format=csvlog
-                        create_logrotate postgresql "${LOG_PATH}"/"${LOG_FILE%.*}".csv postgres postgres
+                        create_logrotate postgresql "${LOG_PATH%/}"/"${LOG_FILE%.*}".csv postgres postgres
                     ;;
                     json )
                         log_format=jsonlog
-                        create_logrotate postgresql "${LOG_PATH}"/"${LOG_FILE%.*}".json postgres postgres
+                        create_logrotate postgresql "${LOG_PATH%/}"/"${LOG_FILE%.*}".json postgres postgres
                     ;;
                     normal | default | stderr | * )
                         log_format=stderr
-                        create_logrotate postgresql "${LOG_PATH}"/"${LOG_FILE}" postgres postgres
+                        create_logrotate postgresql "${LOG_PATH%/}"/"${LOG_FILE}" postgres postgres
                     ;;
                 esac
             ;;

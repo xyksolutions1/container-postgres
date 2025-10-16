@@ -7,13 +7,13 @@ bootstrap_filesystem() {
                     "${CERT_PATH},\
                     ${CONFIG_PATH},\
                     ${CONFIG_CUSTOM_PATH}, \
-                    ${LOG_PATH}"
+                    ${LOG_PATH}" \
                     postgres:postgres 755
 
     create_folder \
                     "${DATA_PATH},\
                     ${WAL_PATH},\
-                    /var/run/postgres"
+                    /var/run/postgres" \
                     postgres:postgres 700
 }
 

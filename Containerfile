@@ -19,7 +19,7 @@ LABEL \
 
 ARG \
     POSTGRES_VERSION="18.0" \
-    POSTGRES_ZABBIX_PLUGIN_VERSION="7.4.3"
+    POSTGRES_ZABBIX_PLUGIN_VERSION
 
 COPY CHANGELOG.md /usr/src/container/CHANGELOG.md
 COPY LICENSE /usr/src/container/LICENSE
@@ -61,16 +61,18 @@ RUN echo "" && \
                                 " \
                                 && \
     \
-    POSTGRESZABBIX_BUILD_DEPS_ALPINE=" \
-                                        go \
+    POSTGRES_ZABBIX_BUILD_DEPS_ALPINE=" \
                                         make \
                                     " \
                                     && \
     \
     POSTGRES_RUN_DEPS_ALPINE=" \
                                 icu-data-full \
+                                icu-libs \
+                                libldap \
                                 libpq \
                                 llvm20 \
+                                lz4-libs \
                                 musl-locales \
                                 openssl \
                                 zstd-libs \
@@ -83,18 +85,24 @@ RUN echo "" && \
     package upgrade && \
     package install \
                         POSTGRES_BUILD_DEPS \
-                        POSTGRESZABBIX_BUILD_DEPS \
                         POSTGRES_RUN_DEPS \
                     && \
     \
-    mkdir -p /usr/src/postgres-zabbix-plugin && \
-    curl -sSL https://cdn.zabbix.com/zabbix-agent2-plugins/sources/postgresql/zabbix-agent2-plugin-postgresql-${POSTGRES_ZABBIX_PLUGIN_VERSION}.tar.gz | tar xvfz - --strip 2 -C /usr/src/postgres-zabbix-plugin && \
-    cd /usr/src/postgres-zabbix-plugin && \
-    make && \
-    strip zabbix-agent2-plugin-postgresql && \
-    mkdir -p /var/lib/zabbix/plugins && \
-    cp zabbix-agent2-plugin-postgresql /var/lib/zabbix/plugins && \
-    container_build_log add "Postgres Zabbix Plugin" "${POSTGRES_ZABBIX_PLUGIN_VERSION}" "zabbix.com" && \
+    if [ -f "/usr/local/bin/zabbix_agent2" ]; then \
+        package install \
+                        POSTGRES_ZABBIX_BUILD_DEPS \
+                        && \
+        package build go && \
+        POSTGRES_ZABBIX_PLUGIN_VERSION=${POSTGRES_ZABBIX_PLUGIN_VERSION:-"$(zabbix_agent2 --version | head -n1 | awk {'print $3'})"} ; \
+        mkdir -p /usr/src/postgres-zabbix-plugin ; \
+        curl -sSL https://cdn.zabbix.com/zabbix-agent2-plugins/sources/postgresql/zabbix-agent2-plugin-postgresql-${POSTGRES_ZABBIX_PLUGIN_VERSION}.tar.gz | tar xvfz - --strip 2 -C /usr/src/postgres-zabbix-plugin ; \
+        cd /usr/src/postgres-zabbix-plugin ; \
+        make ; \
+        strip zabbix-agent2-plugin-postgresql ; \
+        mkdir -p /var/lib/zabbix/plugins ; \
+        cp zabbix-agent2-plugin-postgresql /var/lib/zabbix/plugins ; \
+        container_build_log add "Postgres Zabbix Plugin" "${POSTGRES_ZABBIX_PLUGIN_VERSION}" "zabbix.com" ; \
+    fi ; \
     mkdir -p /usr/src/postgres && \
     curl -sSL https://ftp.postgresql.org/pub/source/v${POSTGRES_VERSION}/postgresql-${POSTGRES_VERSION}.tar.bz2 | tar xvfj - --strip 1 -C /usr/src/postgres && \
     cd /usr/src/postgres && \
@@ -134,18 +142,7 @@ RUN echo "" && \
     make install-world-bin && \
     make -j "$(nproc)" -C contrib && \
     make -C contrib/ install && \
-    COMPILE_RUN_DEPS_ALPINE="$( \
-                                scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
-                                			| tr ',' '\n' \
-                                			| sort -u \
-                                			| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
-                                			| grep -v -e perl -e python -e tcl \
-                              )" && \
-    \
-    find /usr/local -name '*.a' -delete && \
-    package install \
-                        COMPILE_RUN_DEPS \
-                    && \
+    package install SCANNED_RUNTIME_DEPS && \
     container_build_log add "Postgresql" "${POSTGRES_VERSION}" "postgresql.org" && \
     rm -rf \
 	        /usr/local/share/doc \
@@ -153,7 +150,7 @@ RUN echo "" && \
             && \
     package remove \
                     POSTGRES_BUILD_DEPS \
-                    POSTGRESZABBIX_BUILD_DEPS \
+                    POSTGRES_ZABBIX_BUILD_DEPS \
                     && \
     package cleanup
 

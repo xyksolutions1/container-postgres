@@ -16,5 +16,4 @@ create_databases
 configure_replication
 configure_monitoring
 control_server stop
-print_info "PostgreSQL init process complete - ready for start up."
 liftoff

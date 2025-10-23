@@ -314,7 +314,7 @@ initialize_cluster() {
     }
 
     if [ ! -s "${DATA_PATH%/}"/PG_VERSION ] ; then
-        if [ "$(dirname ${CONFIG_CUSTOM_PATH%/})" = "${DATA_PATH%/}" ] ; then
+        if [ "$(dirname "${CONFIG_CUSTOM_PATH%/}")" = "${DATA_PATH%/}" ] ; then
             mv "${CONFIG_CUSTOM_PATH%/}" /tmp/
         fi
         if dir_notempty "${DATA_PATH%/}" ; then
@@ -377,6 +377,7 @@ initialize_cluster() {
         fi
     else
         print_debug "[initialize_cluster] Skipping - Already initialized"
+        POSTGRES_VERSION=$(psql --version | head -n 1 | awk '{print $NF}')
         if [ "${POSTGRES_VERSION:0:2}" != $(cat "${DATA_PATH%/}"/PG_VERSION) ] ; then
             print_error "Detected Major version error. Schema is built for '$(cat "{DATA_PATH%/}"/PG_VERSION)' and this image is using '${PG_VERSION:0:2}'"
             print_error "Upgrade database or perform a restore from a backup"

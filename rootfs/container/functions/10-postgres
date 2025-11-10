@@ -135,6 +135,62 @@ EOSQL
 }
 
 create_databases() {
+    create_database () {
+        local i="${1}"
+        i=$(printf "%02d" $i)
+        transform_var file \
+                            DB${i}_NAME \
+                            DB${i}_USER \
+                            DB${i}_PASS
+
+        DB_NAME=DB${i}_NAME
+        DB_USER=DB${i}_USER
+        DB_PASS=DB${i}_PASS
+        DB_EXTENSION=DB${i}_EXTENSION
+
+        if ! psql -lqt | cut -d \| -f 1 | grep -qw "${!DB_NAME}" ; then
+            new_db=true
+            print_notice "[create_databases] Creating Database: '${!DB_NAME}'"
+            silent psql \
+                        -v \
+                        --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
+    CREATE DATABASE "${!DB_NAME}" ;
+EOSQL
+            for db_extension in $(awk -F',' '{for (i = 1 ; i <= NF ; i++) print $i}' <<< "${!DB_EXTENSION}"); do
+                print_notice "[create_databases] Adding extension '${db_extension}' to '${!DB_NAME}'"
+                silent psql \
+                            -v \
+                            --username ${SUPERUSER_USER} --dbname ${!DB_NAME} <<-EOSQL
+    CREATE EXTENSION IF NOT EXISTS ${db_extension};
+EOSQL
+            done
+        fi
+
+        if ! psql -Atq -U ${SUPERUSER_USER} -d postgres -c "SELECT '@' || usename || '@' FROM pg_user" | grep -q "@${!DB_USER}@" ; then
+            print_notice "[create_databases] Creating User: '${!DB_USER}'"
+            silent psql \
+                        -v \
+                        --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
+    CREATE USER ${!DB_USER} WITH ENCRYPTED PASSWORD '${!DB_PASS}';
+EOSQL
+
+            print_notice "[create_databases] Granting all privileges to '${!DB_USER}' on '${!DB_NAME}'"
+            silent psql \
+                        -v \
+                        --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
+    GRANT ALL PRIVILEGES ON DATABASE ${!DB_NAME} TO ${!DB_USER};
+EOSQL
+        fi
+
+        if var_true "${new_db}" ; then
+            silent psql \
+                        -v \
+                        --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
+    ALTER DATABASE ${!DB_NAME} OWNER TO ${!DB_USER};
+EOSQL
+            fi
+    }
+
     if var_true "${CREATE_DB}" ; then
         transform_var file \
                         DB_NAME \
@@ -146,60 +202,7 @@ create_databases() {
         if [ -n "${DB_PASS}" ] && [ -z "${DB01_PASS}" ] ; then export DB01_PASS="${DB_PASS}" ; unset DB_PASS ; fi
         if [ -n "${DB_EXTENSION}" ] && [ -z "${DB01_EXTENSION}" ] ; then export DB01_EXTENSION="${DB_EXTENSION}" ; unset DB_EXTENSION ; fi
 
-        dbnum=$(printenv | sort | grep -c '^DB.*_NAME')
-        for (( i = 01; i <= dbnum; i++ )) ; do
-            i=$(printf "%02d" $i)
-            transform_var file \
-                            DB${i}_NAME \
-                            DB${i}_USER \
-                            DB${i}_PASS
-            DB_NAME=DB${i}_NAME
-            DB_USER=DB${i}_USER
-            DB_PASS=DB${i}_PASS
-            DB_EXTENSION=DB${i}_EXTENSION
-
-            if ! psql -lqt | cut -d \| -f 1 | grep -qw "${!DB_NAME}" ; then
-                new_db=true
-                print_notice "[create_databases] Creating Database: '${!DB_NAME}'"
-                silent psql \
-                            -v \
-                            --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
-    CREATE DATABASE "${!DB_NAME}" ;
-EOSQL
-                for db_extension in $(awk -F',' '{for (i = 1 ; i <= NF ; i++) print $i}' <<< "${!DB_EXTENSION}"); do
-                    print_notice "[create_databases] Adding extension '${db_extension}' to '${!DB_NAME}'"
-                    silent psql \
-                                -v \
-                                --username ${SUPERUSER_USER} --dbname ${!DB_NAME} <<-EOSQL
-    CREATE EXTENSION IF NOT EXISTS ${db_extension};
-EOSQL
-                done
-            fi
-
-            if ! psql -Atq -U ${SUPERUSER_USER} -d postgres -c "SELECT '@' || usename || '@' FROM pg_user" | grep -q "@${!DB_USER}@" ; then
-                print_notice "[create_databases] Creating User: '${!DB_USER}'"
-                silent psql \
-                            -v \
-                            --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
-    CREATE USER ${!DB_USER} WITH ENCRYPTED PASSWORD '${!DB_PASS}';
-EOSQL
-
-                print_notice "[create_databases] Granting all privileges to '${!DB_USER}' on '${!DB_NAME}'"
-                silent psql \
-                            -v \
-                            --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
-    GRANT ALL PRIVILEGES ON DATABASE ${!DB_NAME} TO ${!DB_USER};
-EOSQL
-            fi
-
-            if var_true "${new_db}" ; then
-                silent psql \
-                            -v \
-                            --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
-    ALTER DATABASE ${!DB_NAME} OWNER TO ${!DB_USER};
-EOSQL
-            fi
-        done
+        floop "$(printenv | sort | grep -cE '^DB([0-9].)_NAME')" create_database EMAN_BD
     fi
 }
 

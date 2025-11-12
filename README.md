@@ -178,15 +178,15 @@ Create multiple databases and different usernames and passwords to access. You c
 
 | Parameter        | Description                                        | Default | `_FILE` | Advanced |
 | ---------------- | -------------------------------------------------- | ------- | ------- | -------- |
-| `DB01_NAME`      | First Database Name e.g. `database1`               |         | x       |  |
-| `DB01_USER`      | First Database User e.g. `user1`                   |         | x       | |
-| `DB01_PASS`      | First Database Pass e.g. `password1`               |         | x       | |
-| `DB01_EXTENSION` | (optional) Database Extension e.g. `unaccent`      |         | x       | |
-| `DB02_NAME`      | Second Database Name e.g. `database1`              |         | x       | |
-| `DB02_USER`      | Second Database User e.g. `user2`                  |         | x       | |
-| `DB02_PASS`      | Second Database Pass e.g. `password2`              |         | x       | |
-| `DB02_EXTENSION` | (optional) Database Extension e.g. `unaccent`      |         |         | |
-| `DBXX_...`       | As above, should be able to go all the way to `99` |         |         | x |
+| `DB01_NAME`      | First Database Name e.g. `database1`               |         | x       |          |
+| `DB01_USER`      | First Database User e.g. `user1`                   |         | x       |          |
+| `DB01_PASS`      | First Database Pass e.g. `password1`               |         | x       |          |
+| `DB01_EXTENSION` | (optional) Database Extension e.g. `unaccent`      |         | x       |          |
+| `DB02_NAME`      | Second Database Name e.g. `database1`              |         | x       |          |
+| `DB02_USER`      | Second Database User e.g. `user2`                  |         | x       |          |
+| `DB02_PASS`      | Second Database Pass e.g. `password2`              |         | x       |          |
+| `DB02_EXTENSION` | (optional) Database Extension e.g. `unaccent`      |         |         |          |
+| `DBXX_...`       | As above, should be able to go all the way to `99` |         |         | x        |
 
 Advanced mode allows you to maange more than 3 databases.
 

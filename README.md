@@ -176,17 +176,20 @@ Automatically create user databases on startup. This can be done on each contain
 
 Create multiple databases and different usernames and passwords to access. You can share usernames and passwords for multiple databases by using the same user and password in each entry.
 
-| Parameter        | Description                                        | Default | `_FILE` |
-| ---------------- | -------------------------------------------------- | ------- | ------- |
-| `DB01_NAME`      | First Database Name e.g. `database1`               |         | x       |
-| `DB01_USER`      | First Database User e.g. `user1`                   |         | x       |
-| `DB01_PASS`      | First Database Pass e.g. `password1`               |         | x       |
-| `DB01_EXTENSION` | (optional) Database Extension e.g. `unaccent`      |         | x       |
-| `DB02_NAME`      | Second Database Name e.g. `database1`              |         | x       |
-| `DB02_USER`      | Second Database User e.g. `user2`                  |         | x       |
-| `DB02_PASS`      | Second Database Pass e.g. `password2`              |         | x       |
-| `DB02_EXTENSION` | (optional) Database Extension e.g. `unaccent`      |         |         |
-| `DBXX_...`       | As above, should be able to go all the way to `99` |         |         |
+| Parameter        | Description                                        | Default | `_FILE` | Advanced |
+| ---------------- | -------------------------------------------------- | ------- | ------- | -------- |
+| `DB01_NAME`      | First Database Name e.g. `database1`               |         | x       |  |
+| `DB01_USER`      | First Database User e.g. `user1`                   |         | x       | |
+| `DB01_PASS`      | First Database Pass e.g. `password1`               |         | x       | |
+| `DB01_EXTENSION` | (optional) Database Extension e.g. `unaccent`      |         | x       | |
+| `DB02_NAME`      | Second Database Name e.g. `database1`              |         | x       | |
+| `DB02_USER`      | Second Database User e.g. `user2`                  |         | x       | |
+| `DB02_PASS`      | Second Database Pass e.g. `password2`              |         | x       | |
+| `DB02_EXTENSION` | (optional) Database Extension e.g. `unaccent`      |         |         | |
+| `DBXX_...`       | As above, should be able to go all the way to `99` |         |         | x |
+
+Advanced mode allows you to maange more than 3 databases.
+
 
 #### Replication Options
 

@@ -18,7 +18,8 @@ LABEL \
         org.opencontainers.image.licenses="MIT"
 
 ARG \
-    POSTGRES_VERSION="18.0" \
+    POSTGRES_VERSION="REL_18_1" \
+    POSTGRES_REPO_URL="https://github.com/postgres/postgres" \
     POSTGRES_ZABBIX_PLUGIN_VERSION
 
 COPY CHANGELOG.md /usr/src/container/CHANGELOG.md
@@ -103,9 +104,7 @@ RUN echo "" && \
         cp zabbix-agent2-plugin-postgresql /var/lib/zabbix/plugins ; \
         container_build_log add "Postgres Zabbix Plugin" "${POSTGRES_ZABBIX_PLUGIN_VERSION}" "zabbix.com" ; \
     fi ; \
-    mkdir -p /usr/src/postgres && \
-    curl -sSL https://ftp.postgresql.org/pub/source/v${POSTGRES_VERSION}/postgresql-${POSTGRES_VERSION}.tar.bz2 | tar xvfj - --strip 1 -C /usr/src/postgres && \
-    cd /usr/src/postgres && \
+    clone_git_repo "${POSTGRES_REPO_URL}" "${POSTGRES_VERSION}" && \
     awk '$1 == "#define" && $2 == "DEFAULT_PGSOCKET_DIR" && $3 == "\"/tmp\"" { $3 = "\"/var/run/postgresql\""; print; next } { print }' src/include/pg_config_manual.h > src/include/pg_config_manual.h.new && \
     grep '/var/run/postgresql' src/include/pg_config_manual.h.new && \
     mv src/include/pg_config_manual.h.new src/include/pg_config_manual.h && \
@@ -143,7 +142,7 @@ RUN echo "" && \
     make -j "$(nproc)" -C contrib && \
     make -C contrib/ install && \
     package install SCANNED_RUNTIME_DEPS && \
-    container_build_log add "Postgresql" "${POSTGRES_VERSION}" "postgresql.org" && \
+    container_build_log add "Postgresql" "$(echo ${POSTGRES_VERSION#REL_} | tr '_' '.')" "${POSTGRES_REPO_URL}" && \
     rm -rf \
 	        /usr/local/share/doc \
 	        /usr/local/share/man \

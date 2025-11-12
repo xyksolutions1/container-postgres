@@ -1,12 +1,12 @@
 ## 18-3.3.0pre 2025-10-06 <code at nfrastack dot com>
 
    ### Added
-      - Postgres 18.0
+      - Postgres 18.1
       - Switch base image to nfrastack/base
       - Alpine 3.22
       - Clang 20
       - LLVM 20
-      - Zabbix Postgres plugin 7.4.3
+      - Zabbix Postgres plugin 7.4.5
 
 ## 17-3.2.99 2025-10-06 <dave at tiredofit dot ca>
 

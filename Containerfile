@@ -18,8 +18,9 @@ LABEL \
         org.opencontainers.image.licenses="MIT"
 
 ARG \
-    POSTGRES_VERSION="17.6" \
-    POSTGRES_ZABBIX_PLUGIN_VERSION="7.4.3"
+    POSTGRES_VERSION="REL_17_7" \
+    POSTGRES_REPO_URL="https://github.com/postgres/postgres" \
+    POSTGRES_ZABBIX_PLUGIN_VERSION
 
 COPY CHANGELOG.md /usr/src/container/CHANGELOG.md
 COPY LICENSE /usr/src/container/LICENSE
@@ -28,6 +29,8 @@ COPY README.md /usr/src/container/README.md
 ENV \
     IMAGE_NAME="nfrastack/postgres" \
     IMAGE_REPO_URL="https://github.com/nfrastack/container-postgres/"
+
+EXPOSE 5432
 
 RUN echo "" && \
     POSTGRES_BUILD_DEPS_ALPINE=" \
@@ -61,16 +64,18 @@ RUN echo "" && \
                                 " \
                                 && \
     \
-    POSTGRESZABBIX_BUILD_DEPS_ALPINE=" \
-                                        go \
+    POSTGRES_ZABBIX_BUILD_DEPS_ALPINE=" \
                                         make \
                                     " \
                                     && \
     \
     POSTGRES_RUN_DEPS_ALPINE=" \
                                 icu-data-full \
+                                icu-libs \
+                                libldap \
                                 libpq \
                                 llvm20 \
+                                lz4-libs \
                                 musl-locales \
                                 openssl \
                                 zstd-libs \
@@ -83,21 +88,25 @@ RUN echo "" && \
     package upgrade && \
     package install \
                         POSTGRES_BUILD_DEPS \
-                        POSTGRESZABBIX_BUILD_DEPS \
                         POSTGRES_RUN_DEPS \
                     && \
     \
-    mkdir -p /usr/src/postgres-zabbix-plugin && \
-    curl -sSL https://cdn.zabbix.com/zabbix-agent2-plugins/sources/postgresql/zabbix-agent2-plugin-postgresql-${POSTGRES_ZABBIX_PLUGIN_VERSION}.tar.gz | tar xvfz - --strip 2 -C /usr/src/postgres-zabbix-plugin && \
-    cd /usr/src/postgres-zabbix-plugin && \
-    make && \
-    strip zabbix-agent2-plugin-postgresql && \
-    mkdir -p /var/lib/zabbix/plugins && \
-    cp zabbix-agent2-plugin-postgresql /var/lib/zabbix/plugins && \
-    container_build_log add "Postgres Zabbix Plugin" "${POSTGRES_ZABBIX_PLUGIN_VERSION}" "zabbix.com" && \
-    mkdir -p /usr/src/postgres && \
-    curl -sSL https://ftp.postgresql.org/pub/source/v${POSTGRES_VERSION}/postgresql-${POSTGRES_VERSION}.tar.bz2 | tar xvfj - --strip 1 -C /usr/src/postgres && \
-    cd /usr/src/postgres && \
+    if [ -f "/usr/local/bin/zabbix_agent2" ]; then \
+        package install \
+                        POSTGRES_ZABBIX_BUILD_DEPS \
+                        && \
+        package build go && \
+        POSTGRES_ZABBIX_PLUGIN_VERSION=${POSTGRES_ZABBIX_PLUGIN_VERSION:-"$(zabbix_agent2 --version | head -n1 | awk {'print $3'})"} ; \
+        mkdir -p /usr/src/postgres-zabbix-plugin ; \
+        curl -sSL https://cdn.zabbix.com/zabbix-agent2-plugins/sources/postgresql/zabbix-agent2-plugin-postgresql-${POSTGRES_ZABBIX_PLUGIN_VERSION}.tar.gz | tar xvfz - --strip 2 -C /usr/src/postgres-zabbix-plugin ; \
+        cd /usr/src/postgres-zabbix-plugin ; \
+        make ; \
+        strip zabbix-agent2-plugin-postgresql ; \
+        mkdir -p /var/lib/zabbix/plugins ; \
+        cp zabbix-agent2-plugin-postgresql /var/lib/zabbix/plugins ; \
+        container_build_log add "Postgres Zabbix Plugin" "${POSTGRES_ZABBIX_PLUGIN_VERSION}" "zabbix.com" ; \
+    fi ; \
+    clone_git_repo "${POSTGRES_REPO_URL}" "${POSTGRES_VERSION}" && \
     awk '$1 == "#define" && $2 == "DEFAULT_PGSOCKET_DIR" && $3 == "\"/tmp\"" { $3 = "\"/var/run/postgresql\""; print; next } { print }' src/include/pg_config_manual.h > src/include/pg_config_manual.h.new && \
     grep '/var/run/postgresql' src/include/pg_config_manual.h.new && \
     mv src/include/pg_config_manual.h.new src/include/pg_config_manual.h && \
@@ -134,29 +143,16 @@ RUN echo "" && \
     make install-world-bin && \
     make -j "$(nproc)" -C contrib && \
     make -C contrib/ install && \
-    COMPILE_RUN_DEPS_ALPINE="$( \
-                                scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
-                                			| tr ',' '\n' \
-                                			| sort -u \
-                                			| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
-                                			| grep -v -e perl -e python -e tcl \
-                              )" && \
-    \
-    find /usr/local -name '*.a' -delete && \
-    package install \
-                        COMPILE_RUN_DEPS \
-                    && \
-    container_build_log add "Postgresql" "${POSTGRES_VERSION}" "postgresql.org" && \
+    package install SCANNED_RUNTIME_DEPS && \
+    container_build_log add "Postgresql" "$(echo ${POSTGRES_VERSION#REL_} | tr '_' '.')" "${POSTGRES_REPO_URL}" && \
     rm -rf \
 	        /usr/local/share/doc \
 	        /usr/local/share/man \
             && \
     package remove \
                     POSTGRES_BUILD_DEPS \
-                    POSTGRESZABBIX_BUILD_DEPS \
+                    POSTGRES_ZABBIX_BUILD_DEPS \
                     && \
     package cleanup
-
-EXPOSE 5432
 
 COPY rootfs /

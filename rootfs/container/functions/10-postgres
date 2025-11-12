@@ -70,9 +70,9 @@ EOSQL
 
         fi
 
-        if ! grep -q "${MONITOR_USER}" "${CONFIG_PATH}"/"${HBA_FILE}" ; then
+        if ! grep -q "${MONITOR_USER}" "${CONFIG_PATH%/}"/"${HBA_FILE}" ; then
             print_notice "[configure_monitoring] Adding '${MONITOR_USER}' to '${HBA_FILE}'"
-            echo "host       all        ${MONITOR_USER}     localhost               md5" >> "${CONFIG_PATH}"/"${HBA_FILE}"
+            echo "host       all        ${MONITOR_USER}     localhost               md5" >> "${CONFIG_PATH%/}"/"${HBA_FILE}"
         fi
     else
         print_debug "[configure_monitoring] Deleting Monitor User: '${MONITOR_USER}'"
@@ -107,9 +107,9 @@ configure_replication() {
 EOSQL
                 fi
 
-                if ! grep -q "${REPLICATION_USER}" "${CONFIG_PATH}"/"${HBA_FILE}" ; then
+                if ! grep -q "${REPLICATION_USER}" "${CONFIG_PATH%/}"/"${HBA_FILE}" ; then
                     print_notice "[configure_replication] Adding '${REPLICATION_USER}/${REPLICATION_IP_ALLOW}' to '${HBA_FILE}'"
-                    echo "host replication ${REPLICATION_USER} ${REPLICATION_IP_ALLOW} md5" >> "${CONFIG_PATH}"/"${HBA_FILE}"
+                    echo "host replication ${REPLICATION_USER} ${REPLICATION_IP_ALLOW} md5" >> "${CONFIG_PATH%/}"/"${HBA_FILE}"
                 fi
             ;;
         esac
@@ -280,7 +280,7 @@ EOREPLICATIONHOTSTANDBY
                     sanity_var "REPLICATION_PORT" "listening port of replication host"
                     sanity_var "REPLICATION_USER" "replication user on replication host"
                     sanity_var "REPLICATION_PASS" "replication password for user on replication host"
-                    cat <<EOREPLICATIONRECOVERY | silent sudo -u postgres tee "${CONFIG_CUSTOM_PATH}"/replication-recovery.conf
+                    cat <<EOREPLICATIONRECOVERY | silent sudo -u postgres tee "${CONFIG_CUSTOM_PATH%/}"/replication-recovery.conf
 standby_mode = 'on'
 primary_conninfo = 'host=${REPLICATION_HOST} port=${REPLICATION_PORT} user=${REPLICATION_USER} password=${REPLICATION_PASS} sslmode=${REPLICATION_SSLMODE}'
 EOREPLICATIONRECOVERY
@@ -365,7 +365,7 @@ initialize_cluster() {
                                     --username=${SUPERUSER_USER} \
                                     --pwfile=/tmp/.pgpassword \
                                     ${initdb_args} ${DATA_PATH}
-            rm -rf "${DATA_PATH}"/*.conf \
+            rm -rf "${DATA_PATH%/}"/*.conf \
                     /tmp/.pgpassword
         fi
         if [ "$(dirname ${CONFIG_CUSTOM_PATH%/})" = "${DATA_PATH%/}" ] ; then

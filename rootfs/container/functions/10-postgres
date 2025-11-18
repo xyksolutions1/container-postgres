@@ -7,13 +7,13 @@ bootstrap_filesystem() {
                     "${CERT_PATH},\
                     ${CONFIG_PATH},\
                     ${CONFIG_CUSTOM_PATH}, \
-                    ${LOG_PATH}"
+                    ${LOG_PATH}" \
                     postgres:postgres 755
 
     create_folder \
                     "${DATA_PATH},\
                     ${WAL_PATH},\
-                    /var/run/postgres"
+                    /var/run/postgresql" \
                     postgres:postgres 700
 }
 
@@ -47,17 +47,22 @@ control_server() {
 }
 
 configure_monitoring() {
-    if var_true "${CONTAINER_ENABLE_MONITORING}" && [ "${CONTAINER_MONITORING_BACKEND,,}" = "zabbix" ]; then
-        source /container/base/defaults/*-monitoring
-        transform_var file \
+    transform_var file \
                         MONITOR_USER \
                         MONITOR_PASS
 
-        cat <<EOF > "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_postgres.conf
+    if var_true "${CONTAINER_ENABLE_MONITORING}" ; then
+        source /container/base/defaults/*-monitoring
+
+        case "${CONTAINER_MONITORING_BACKEND,,}" in
+            "zabbix" )
+                cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_postgres.conf
 # Zabbix Postgresql Configuration - Automatically Generated
-# Find Companion Zabbix Server Templates at https://github.com/nfrastack/docker-postgres
+# Find Companion Zabbix Server Templates at https://github.com/nfrastack/container-postgres
 # Autoregister=postgres
 EOF
+            ;;
+        esac
 
         if ! psql -Atq -U ${SUPERUSER_USER} -d postgres -c "SELECT '@' || usename || '@' FROM pg_user" | grep -q "@${MONITOR_USER}@" ; then
             print_notice "[configure_monitoring] Creating Monitor User: '${MONITOR_USER}'"
@@ -67,7 +72,6 @@ EOF
     CREATE USER ${MONITOR_USER} WITH PASSWORD '${MONITOR_PASS}' INHERIT;
     GRANT pg_monitor TO ${MONITOR_USER};
 EOSQL
-
         fi
 
         if ! grep -q "${MONITOR_USER}" "${CONFIG_PATH%/}"/"${HBA_FILE}" ; then
@@ -131,6 +135,62 @@ EOSQL
 }
 
 create_databases() {
+    create_database () {
+        local i="${1}"
+        i=$(printf "%02d" $i)
+        transform_var file \
+                            DB${i}_NAME \
+                            DB${i}_USER \
+                            DB${i}_PASS
+
+        DB_NAME=DB${i}_NAME
+        DB_USER=DB${i}_USER
+        DB_PASS=DB${i}_PASS
+        DB_EXTENSION=DB${i}_EXTENSION
+
+        if ! psql -lqt | cut -d \| -f 1 | grep -qw "${!DB_NAME}" ; then
+            new_db=true
+            print_notice "[create_databases] Creating Database: '${!DB_NAME}'"
+            silent psql \
+                        -v \
+                        --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
+    CREATE DATABASE "${!DB_NAME}" ;
+EOSQL
+            for db_extension in $(awk -F',' '{for (i = 1 ; i <= NF ; i++) print $i}' <<< "${!DB_EXTENSION}"); do
+                print_notice "[create_databases] Adding extension '${db_extension}' to '${!DB_NAME}'"
+                silent psql \
+                            -v \
+                            --username ${SUPERUSER_USER} --dbname ${!DB_NAME} <<-EOSQL
+    CREATE EXTENSION IF NOT EXISTS ${db_extension};
+EOSQL
+            done
+        fi
+
+        if ! psql -Atq -U ${SUPERUSER_USER} -d postgres -c "SELECT '@' || usename || '@' FROM pg_user" | grep -q "@${!DB_USER}@" ; then
+            print_notice "[create_databases] Creating User: '${!DB_USER}'"
+            silent psql \
+                        -v \
+                        --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
+    CREATE USER ${!DB_USER} WITH ENCRYPTED PASSWORD '${!DB_PASS}';
+EOSQL
+
+            print_notice "[create_databases] Granting all privileges to '${!DB_USER}' on '${!DB_NAME}'"
+            silent psql \
+                        -v \
+                        --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
+    GRANT ALL PRIVILEGES ON DATABASE ${!DB_NAME} TO ${!DB_USER};
+EOSQL
+        fi
+
+        if var_true "${new_db}" ; then
+            silent psql \
+                        -v \
+                        --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
+    ALTER DATABASE ${!DB_NAME} OWNER TO ${!DB_USER};
+EOSQL
+            fi
+    }
+
     if var_true "${CREATE_DB}" ; then
         transform_var file \
                         DB_NAME \
@@ -142,60 +202,7 @@ create_databases() {
         if [ -n "${DB_PASS}" ] && [ -z "${DB01_PASS}" ] ; then export DB01_PASS="${DB_PASS}" ; unset DB_PASS ; fi
         if [ -n "${DB_EXTENSION}" ] && [ -z "${DB01_EXTENSION}" ] ; then export DB01_EXTENSION="${DB_EXTENSION}" ; unset DB_EXTENSION ; fi
 
-        dbnum=$(printenv | sort | grep -c '^DB.*_NAME')
-        for (( i = 01; i <= dbnum; i++ )) ; do
-            i=$(printf "%02d" $i)
-            transform_var file \
-                            DB${i}_NAME \
-                            DB${i}_USER \
-                            DB${i}_PASS
-            DB_NAME=DB${i}_NAME
-            DB_USER=DB${i}_USER
-            DB_PASS=DB${i}_PASS
-            DB_EXTENSION=DB${i}_EXTENSION
-
-            if ! psql -lqt | cut -d \| -f 1 | grep -qw "${!DB_NAME}" ; then
-                new_db=true
-                print_notice "[create_databases] Creating Database: '${!DB_NAME}'"
-                silent psql \
-                            -v \
-                            --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
-    CREATE DATABASE "${!DB_NAME}" ;
-EOSQL
-                for db_extension in $(awk -F',' '{for (i = 1 ; i <= NF ; i++) print $i}' <<< "${!DB_EXTENSION}"); do
-                    print_notice "[create_databases] Adding extension '${db_extension}' to '${!DB_NAME}'"
-                    silent psql \
-                                -v \
-                                --username ${SUPERUSER_USER} --dbname ${!DB_NAME} <<-EOSQL
-    CREATE EXTENSION IF NOT EXISTS ${db_extension};
-EOSQL
-                done
-            fi
-
-            if ! psql -Atq -U ${SUPERUSER_USER} -d postgres -c "SELECT '@' || usename || '@' FROM pg_user" | grep -q "@${!DB_USER}@" ; then
-                print_notice "[create_databases] Creating User: '${!DB_USER}'"
-                silent psql \
-                            -v \
-                            --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
-    CREATE USER ${!DB_USER} WITH ENCRYPTED PASSWORD '${!DB_PASS}';
-EOSQL
-
-                print_notice "[create_databases] Granting all privileges to '${!DB_USER}' on '${!DB_NAME}'"
-                silent psql \
-                            -v \
-                            --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
-    GRANT ALL PRIVILEGES ON DATABASE ${!DB_NAME} TO ${!DB_USER};
-EOSQL
-            fi
-
-            if var_true "${new_db}" ; then
-                silent psql \
-                            -v \
-                            --username ${SUPERUSER_USER} --dbname postgres <<-EOSQL
-    ALTER DATABASE ${!DB_NAME} OWNER TO ${!DB_USER};
-EOSQL
-            fi
-        done
+        floop "$(printenv | sort | grep -cE '^DB([0-9].)_NAME')" create_database EMAN_BD
     fi
 }
 
@@ -244,20 +251,20 @@ configure_server() {
         esac
 
         s6-setuidgid postgres sed -i \
-                                    -e "s|data_directory = '.*'|data_directory = '${DATA_PATH%/}'|g" \
-                                    -e "s|include_dir = '.*'|include_dir = '${CONFIG_CUSTOM_PATH%/}'|g" \
-                                    -e "s|hba_file = '.*'|hba_file = '${CONFIG_PATH%/}/${HBA_FILE}'|g" \
-                                    -e "s|ident_file = '.*'|ident_file = '${CONFIG_PATH%/}/${IDENT_FILE}'|g" \
-                                    -e "s|listen_addresses = '.*'|listen_addresses = '${LISTEN_IP}'|g" \
-                                    -e "s|port = '.*'|port = '${LISTEN_PORT}'|g" \
-                                    -e "s|max_connections = .*|max_connections = ${MAX_CONNECTIONS}|g" \
-                                    -e "s|log_destination = '.*'|log_destination = '${log_format}'|g" \
-                                    -e "s|logging_collector = .*|logging_collector = ${logging_collector}|g" \
-                                    -e "s|log_directory = '.*'|log_directory = '${LOG_PATH%/}'|g" \
-                                    -e "s|log_filename = '.*'|log_filename = '${LOG_FILE}'|g" \
-                                    -e "s|log_min_messages = .*|log_min_messages = ${LOG_LEVEL,,}|g" \
-                                    -e "s|log_min_error_statement = .*|log_min_error_statement = ${LOG_LEVEL_ERROR_STATEMENT,,}|g" \
-                                    -e "s|timezone = '.*'|timezone = '${TIMEZONE}'|g" \
+                                        -e "s|data_directory = '.*'|data_directory = '${DATA_PATH%/}'|g" \
+                                        -e "s|include_dir = '.*'|include_dir = '${CONFIG_CUSTOM_PATH%/}'|g" \
+                                        -e "s|hba_file = '.*'|hba_file = '${CONFIG_PATH%/}/${HBA_FILE}'|g" \
+                                        -e "s|ident_file = '.*'|ident_file = '${CONFIG_PATH%/}/${IDENT_FILE}'|g" \
+                                        -e "s|listen_addresses = '.*'|listen_addresses = '${LISTEN_IP}'|g" \
+                                        -e "s|port = '.*'|port = '${LISTEN_PORT}'|g" \
+                                        -e "s|max_connections = .*|max_connections = ${MAX_CONNECTIONS}|g" \
+                                        -e "s|log_destination = '.*'|log_destination = '${log_format}'|g" \
+                                        -e "s|logging_collector = .*|logging_collector = ${logging_collector}|g" \
+                                        -e "s|log_directory = '.*'|log_directory = '${LOG_PATH%/}'|g" \
+                                        -e "s|log_filename = '.*'|log_filename = '${LOG_FILE}'|g" \
+                                        -e "s|log_min_messages = .*|log_min_messages = ${LOG_LEVEL,,}|g" \
+                                        -e "s|log_min_error_statement = .*|log_min_error_statement = ${LOG_LEVEL_ERROR_STATEMENT,,}|g" \
+                                        -e "s|timezone = '.*'|timezone = '${TIMEZONE}'|g" \
                                     "${CONFIG_PATH%/}"/"${CONFIG_FILE}"
 
         if var_true "${ENABLE_REPLICATION}" && ! [[ "${REPLICATION_MODE,,}" =~ ^(main|master|primary)$ ]] ; then
@@ -310,7 +317,7 @@ initialize_cluster() {
     }
 
     if [ ! -s "${DATA_PATH%/}"/PG_VERSION ] ; then
-        if [ "$(dirname ${CONFIG_CUSTOM_PATH%/})" = "${DATA_PATH%/}" ] ; then
+        if [ "$(dirname "${CONFIG_CUSTOM_PATH%/}")" = "${DATA_PATH%/}" ] ; then
             mv "${CONFIG_CUSTOM_PATH%/}" /tmp/
         fi
         if dir_notempty "${DATA_PATH%/}" ; then
@@ -373,6 +380,7 @@ initialize_cluster() {
         fi
     else
         print_debug "[initialize_cluster] Skipping - Already initialized"
+        POSTGRES_VERSION=$(psql --version | head -n 1 | awk '{print $NF}')
         if [ "${POSTGRES_VERSION:0:2}" != $(cat "${DATA_PATH%/}"/PG_VERSION) ] ; then
             print_error "Detected Major version error. Schema is built for '$(cat "{DATA_PATH%/}"/PG_VERSION)' and this image is using '${PG_VERSION:0:2}'"
             print_error "Upgrade database or perform a restore from a backup"

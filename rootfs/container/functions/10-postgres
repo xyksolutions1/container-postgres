@@ -312,9 +312,24 @@ initialize_cluster() {
                         -h ${REPLICATION_HOST} \
                         -p ${REPLICATION_PORT} \
                         -U ${REPLICATION_USER} \
-                        -X $1 \
+                        -X ${1} \
                         -w
     }
+
+    local config_path_tmp
+    local config_custom_path_tmp
+    for folder_var in CONFIG_PATH CONFIG_CUSTOM_PATH; do
+        folder="${!folder_var%/}"
+        if [ -n "${folder}" ] && [ "${folder}" != "/" ] && [ "${folder}" != "." ]; then
+            abs_data="$(realpath "${DATA_PATH%/}")"
+            abs_folder="$(realpath "${folder}")"
+            if [[ "${abs_folder}" == "${abs_data}"* ]]; then
+                tmp="/tmp/$(basename "${folder}")"
+                mv "${folder}" "${tmp}"
+                eval "${folder_var}_tmp=\"${tmp}\""
+            fi
+        fi
+    done
 
     if [ ! -s "${DATA_PATH%/}"/PG_VERSION ] ; then
         if [ "$(dirname "${CONFIG_CUSTOM_PATH%/}")" = "${DATA_PATH%/}" ] ; then
@@ -375,9 +390,14 @@ initialize_cluster() {
             rm -rf "${DATA_PATH%/}"/*.conf \
                     /tmp/.pgpassword
         fi
-        if [ "$(dirname ${CONFIG_CUSTOM_PATH%/})" = "${DATA_PATH%/}" ] ; then
-            mv /tmp/$(basename "${CONFIG_CUSTOM_PATH%/}") "${DATA_PATH%/}"/
-        fi
+        for folder_var in CONFIG_PATH CONFIG_CUSTOM_PATH; do
+            tmp_var="${folder_var}_tmp"
+            tmp="${!tmp_var}"
+            target="${!folder_var%/}"
+            if [ -n "${tmp}" ] && [ -d "${tmp}" ] && [[ "${tmp}" == /tmp/* ]]; then
+                mv "${tmp}" "${target}"
+            fi
+        done
     else
         print_debug "[initialize_cluster] Skipping - Already initialized"
         POSTGRES_VERSION=$(psql --version | head -n 1 | awk '{print $NF}')

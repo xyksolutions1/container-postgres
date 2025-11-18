@@ -106,7 +106,6 @@ Be sure to view the following repositories to understand all the customizable op
 | Image                                                   | Description                                             |
 | ------------------------------------------------------- | ------------------------------------------------------- |
 | [OS Base](https://github.com/nfrastack/container-base/) | Base Image                                              |
-| [Nginx](https://github.com/nfrastack/container-base/)   | Nginx webserver to proxy to postgres for added security |
 
 Below is the complete list of available options that can be used to customize your installation.
 

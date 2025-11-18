@@ -5,7 +5,7 @@ services:
     container_name: postgres-db
     volumes:
       - ./logs:/logs
-      - ./db:/var/lib/postgresql/data
+      - ./db:/data
     environment:
       - TIMEZONE=America/Vancouver
 

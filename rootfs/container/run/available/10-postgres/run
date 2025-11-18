@@ -12,8 +12,14 @@ case "${LOG_TYPE,,}" in
     file ) hide_output=silent ;;
 esac
 
+if [ "${SETUP_MODE,,}" = "auto" ] ; then
+    local engine_config="/etc/postgres/container.conf"
+else
+    local engine_config="${CONFIG_PATH%/}/${CONFIG_FILE}"
+fi
+
 liftoff
 
 print_start "Starting PostgreSQL $(psql --version | head -n 1 | awk '{print $NF}')"
 TZ="${TIMEZONE}" ${hide_output} exec s6-setuidgid postgres postgres \
-                                    --config_file="${CONFIG_PATH%/}"/"${CONFIG_FILE}" ${SERVER_ARGS}
+                                    --config_file="${engine_config}" ${POSTGRES_ARGS}

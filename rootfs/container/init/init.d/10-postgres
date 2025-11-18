@@ -8,12 +8,12 @@ prepare_service 10-postgres
 SERVICE_NAME="postgres"
 output_off
 
-bootstrap_filesystem
-initialize_cluster
-configure_server
-control_server start
-create_databases
-configure_replication
-configure_monitoring
-control_server stop
+postgres_bootstrap_filesystem
+postgres_initialize_cluster
+postgres_configure_server
+postgres_control_server start
+postgres_create_databases
+postgres_configure_replication
+postgres_configure_monitoring
+postgres_control_server stop
 liftoff

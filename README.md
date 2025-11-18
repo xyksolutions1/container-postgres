@@ -90,13 +90,11 @@ Images are built for `amd64` by default, with optional support for `arm64` and o
 
 The following directories are used for configuration and can be mapped for persistent storage.
 
-| Directory        | Description                                             |
-| ---------------- | ------------------------------------------------------- |
-| `/certs/`        | (optional) Drop TLS Certificates here                   |
-| `/config/`       | Supplemental Configuration directory, loaded at startup |
-| `/data/_config/` | Configuration Directory                                 |
-| `/data/`         | Databases                                               |
-| `/logs/`         | Logfiles                                                |
+| Directory | Description                           |
+| --------- | ------------------------------------- |
+| `/certs/` | (optional) Drop TLS Certificates here |
+| `/data/`  | Databases                             |
+| `/logs/`  | Logfiles                              |
 
 ### Environment Variables
 
@@ -118,26 +116,24 @@ Below is the complete list of available options that can be used to customize yo
 
 #### Container Options
 
-| Parameter                    | Description                                                                                                | Default                 |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `CERT_PATH`                  | Certificates location                                                                                      | `/certs/`               |
-| `CONFIG_CUSTOM_PATH`         | Custom location for configuration                                                                          | `/config/`              |
-| `CONFIG_FILE`                | Configuration file                                                                                         | `postgresql.conf`       |
-| `CONFIG_MODE`                | Configuration mode `DEFAULT` - To be used at a later release                                               | `DEFAULT`               |
-| `CONFIG_PATH`                | Configuration storage                                                                                      | `${DATA_PATH}/_config/` |
-| `DATA_PATH`                  | Database storage                                                                                           | `/data/`                |
-| `HBA_FILE`                   | Host based access file name                                                                                | `pg_hba.conf`           |
-| `IDENT_FILE`                 | Identity file name                                                                                         | `pg_ident.conf`         |
-| `LOG_FILE`                   | Logfile name                                                                                               | `postgresql.log`        |
-| `LOG_FORMAT`                 | Log format `NORMAL` `JSON` or `CSV` Filename extension will change from `.log` to either `.json` or `.csv` | `NORMAL`                |
-| `LOG_LEVEL`                  | Log level messages                                                                                         | `WARNING`               |
-|                              | Values can be in descending detail `DEBUG5`,`DEBUG4`,`DEBUG3`,`DEBUG2`,`DEBUG1`,                           |                         |
-|                              | `INFO`,`NOTICE`,`WARNING`,`ERROR`,`LOG`,`FATAL`,`PANIC`                                                    |                         |
-| `LOG_LEVEL_ERROR_STATEMENTS` | Log level for errors                                                                                       | `ERROR`                 |
-| `LOG_PATH`                   | Store log files here                                                                                       | `/logs/`                |
-| `LOG_TYPE`                   | Log Type `CONSOLE` or `FILE`                                                                               | `FILE`                  |
-| `SETUP_MODE`                 | `AUTO` generate configuration files based on env vars                                                      | `AUTO`                  |
-| `WAL_PATH`                   | Write ahead log path if needing to be seperate from `DATA_PATH`                                            |                         |
+| Parameter                    | Description                                                                                                | Default                       |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `CERT_PATH`                  | Certificates location                                                                                      | `/certs/`                     |
+| `CONFIG_PATH`                | Custom location for configuration e.g `/config/` - Drop custom .conf files here                            |                               |
+| `CONFIG_MODE`                | Configuration mode `CORE` `DEFAULT` - To be used at a later release                                        | `CORE`                        |
+| `DATA_PATH`                  | Database storage                                                                                           | `/data/`                      |
+| `HBA_FILE`                   | Host based access file name                                                                                | `/etc/postgres/pg_hba.conf`   |
+| `IDENT_FILE`                 | Identity file name                                                                                         | `/etc/postgres/pg_ident.conf` |
+| `LOG_FILE`                   | Logfile name                                                                                               | `postgresql.log`              |
+| `LOG_FORMAT`                 | Log format `NORMAL` `JSON` or `CSV` Filename extension will change from `.log` to either `.json` or `.csv` | `NORMAL`                      |
+| `LOG_LEVEL`                  | Log level messages                                                                                         | `WARNING`                     |
+|                              | Values can be in descending detail `DEBUG5`,`DEBUG4`,`DEBUG3`,`DEBUG2`,`DEBUG1`,                           |                               |
+|                              | `INFO`,`NOTICE`,`WARNING`,`ERROR`,`LOG`,`FATAL`,`PANIC`                                                    |                               |
+| `LOG_LEVEL_ERROR_STATEMENTS` | Log level for errors                                                                                       | `ERROR`                       |
+| `LOG_PATH`                   | Store log files here                                                                                       | `/logs/`                      |
+| `LOG_TYPE`                   | Log Type `CONSOLE` or `FILE`                                                                               | `FILE`                        |
+| `SETUP_MODE`                 | `AUTO` generate configuration files based on env vars                                                      | `AUTO`                        |
+| `WAL_PATH`                   | Write ahead log path if needing to be seperate from `DATA_PATH`                                            |                               |
 
 #### Server Options
 

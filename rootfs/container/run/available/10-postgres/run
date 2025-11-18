@@ -22,4 +22,4 @@ liftoff
 
 print_start "Starting PostgreSQL $(psql --version | head -n 1 | awk '{print $NF}')"
 TZ="${TIMEZONE}" ${hide_output} exec s6-setuidgid postgres postgres \
-                                    --config_file="${engine_config}" ${POSTGRES_ARGS}
+                                    --config_file="${engine_config}" ${SERVER_ARGS}

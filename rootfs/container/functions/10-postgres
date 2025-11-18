@@ -5,8 +5,8 @@
 postgres_bootstrap_filesystem() {
     create_folder \
                     "${CERT_PATH},\
-                    ${CONFIG_PATH},\
-                    ${LOG_PATH}" \
+                    ${LOG_PATH}, \
+                    /etc/postgres"
                     postgres:postgres 755
 
     if [ -n "${CONFIG_PATH}" ] ; then
@@ -228,7 +228,7 @@ postgres_configure_server() {
                                         -E "s|${pattern}[[:space:]]*.*|${key} = ${value}|g"
                                     "${file}"
         else
-            echo "${key} = ${value}" | s6-setuidgid tee -a "${file}"
+            echo "${key} = ${value}" | s6-setuidgid postgres tee -a "${file}"
         fi
     }
 

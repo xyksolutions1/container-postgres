@@ -5,18 +5,18 @@
 postgres_bootstrap_filesystem() {
     create_folder \
                     "${CERT_PATH},\
-                    ${LOG_PATH}, \
-                    /etc/postgres"
+                    ${LOG_PATH}" \
                     postgres:postgres 755
 
     if [ -n "${CONFIG_PATH}" ] ; then
         create_folder \
                         "${CONFIG_PATH}" \
-                        postgres:postgres 755
+                        postgres:postgres 750
     fi
 
     create_folder \
-                    "${DATA_PATH},\
+                    "/etc/postgres,\
+                    ${DATA_PATH},\
                     ${WAL_PATH},\
                     /var/run/postgresql" \
                     postgres:postgres 700

@@ -84,7 +84,7 @@ EOF
 EOSQL
         fi
 
-        if ! grep -q "${MONITOR_USER}" "${HBA_FILE}" ; then
+        if ! ( [ -f "${HBA_FILE}" ] && grep -q "${MONITOR_USER}" "${HBA_FILE}" 2>/dev/null ); then
             print_notice "[configure_monitoring] Adding '${MONITOR_USER}' to '${HBA_FILE}'"
             echo "host       all        ${MONITOR_USER}     localhost               md5" | silent tee -a "${HBA_FILE}"
         fi
@@ -121,7 +121,7 @@ postgres_configure_replication() {
 EOSQL
                 fi
 
-                if ! grep -q "${REPLICATION_USER}" "${HBA_FILE}" ; then
+                if ! ( [ -f "${HBA_FILE}" ] && grep -q "${REPLICATION_USER}" "${HBA_FILE}" 2>/dev/null ); then
                     print_notice "[configure_replication] Adding '${REPLICATION_USER}/${REPLICATION_IP_ALLOW}' to '${HBA_FILE}'"
                     echo "host replication ${REPLICATION_USER} ${REPLICATION_IP_ALLOW} md5" | silent tee -a "${HBA_FILE}"
                 fi
@@ -222,14 +222,12 @@ postgres_configure_server() {
         local key="$2"
         local value="$3"
         local pattern="^${key}[[:space:]]*="
-        if grep -qE "${pattern}" "${file}"; then
-            s6-setuidgid postgres sed \
-                                        -i \
-                                        -E "s|${pattern}[[:space:]]*.*|${key} = ${value}|g"
-                                    "${file}"
-        else
-            echo "${key} = ${value}" | s6-setuidgid postgres tee -a "${file}"
-        fi
+        # Only attempt grep/sed if the file exists; silence grep to prevent noisy errors
+        if [ -f "${file}" ] && grep -qE "${pattern}" "${file}" 2>/dev/null; then
+            s6-setuidgid postgres sed -i -E "s|${pattern}[[:space:]]*.*|${key} = ${value}|g" "${file}"
+         else
+             echo "${key} = ${value}" | silent s6-setuidgid postgres tee -a "${file}"
+         fi
     }
 
     if [ "${SETUP_MODE,,}" = "auto" ] ; then

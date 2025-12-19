@@ -1,4 +1,4 @@
-## 17-3.3.0pre 2025-10-06 <code at nfrastack dot com>
+## 17-3.3.0 2025-12-19 <code at nfrastack dot com>
 
    ### Added
       - Switch base image to nfrastack/base
@@ -6,7 +6,7 @@
       - Clang 20
       - LLVM 20
       - Postgresql 17.7
-      - Zabbix Postgres plugin 7.4.5
+      - Zabbix Postgres plugin 7.4.6
 
 ## 17-3.2.99 2025-10-06 <dave at tiredofit dot ca>
 

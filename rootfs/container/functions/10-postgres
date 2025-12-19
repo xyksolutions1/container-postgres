@@ -222,7 +222,6 @@ postgres_configure_server() {
         local key="$2"
         local value="$3"
         local pattern="^${key}[[:space:]]*="
-        # Only attempt grep/sed if the file exists; silence grep to prevent noisy errors
         if [ -f "${file}" ] && grep -qE "${pattern}" "${file}" 2>/dev/null; then
             s6-setuidgid postgres sed -i -E "s|${pattern}[[:space:]]*.*|${key} = ${value}|g" "${file}"
          else

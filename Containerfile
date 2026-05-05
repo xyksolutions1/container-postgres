@@ -5,16 +5,16 @@
 ARG \
     BASE_IMAGE
 
-FROM ${BASE_IMAGE}
+FROM docker.io/xyksolutions1/container-base:main
 
 LABEL \
         org.opencontainers.image.title="Postgresql" \
         org.opencontainers.image.description="Relational database" \
-        org.opencontainers.image.url="https://hub.docker.com/r/nfrastack/postgres" \
-        org.opencontainers.image.documentation="https://github.com/nfrastack/container-postgres/blob/main/README.md" \
-        org.opencontainers.image.source="https://github.com/nfrastack/container-postgres.git" \
-        org.opencontainers.image.authors="Nfrastack <code@nfrastack.com>" \
-        org.opencontainers.image.vendor="Nfrastack <https://www.nfrastack.com>" \
+        org.opencontainers.image.url="https://hub.docker.com/r/xyksolutions1/postgres" \
+        org.opencontainers.image.documentation="https://github.com/xyksolutions1/container-postgres/blob/main/README.md" \
+        org.opencontainers.image.source="https://github.com/xyksolutions1/container-postgres.git" \
+        org.opencontainers.image.authors="xyksolutions1" \
+        org.opencontainers.image.vendor="xyksolutions1" \
         org.opencontainers.image.licenses="MIT"
 
 ARG \
@@ -27,8 +27,8 @@ COPY LICENSE /usr/src/container/LICENSE
 COPY README.md /usr/src/container/README.md
 
 ENV \
-    IMAGE_NAME="nfrastack/postgres" \
-    IMAGE_REPO_URL="https://github.com/nfrastack/container-postgres/"
+    IMAGE_NAME="xyksolutions1/postgres" \
+    IMAGE_REPO_URL="https://github.com/xyksolutions1/container-postgres/"
 
 EXPOSE 5432
 
